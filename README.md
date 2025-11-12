@@ -1,119 +1,396 @@
-# README – Integrador VMC Chatbot Pro
+# VMC Chatbot Pro
 
-## Objetivo general  
+Production-ready AI chatbot monorepo with intelligent orchestration, RAG retrieval, tool execution, and comprehensive guardrails.
 
-Construir el chatbot “VM C-Chatbot-Pro” integrando todos los repos de la organización `matiasportugau-ui`, así como las mejores prácticas de la comunidad open-source, con una arquitectura de producción robusta (observabilidad, guardrails, RAG, CI/CD, multi-canal) y desplegarlo completamente.
+[![CI/CD Pipeline](https://github.com/matiasportugau-ui/bmc-chatbot-pro/actions/workflows/ci.yml/badge.svg)](https://github.com/matiasportugau-ui/bmc-chatbot-pro/actions/workflows/ci.yml)
 
-## Roles &amp; responsabilidades  
+## 🏗️ Architecture
 
-| Rol                  | Responsabilidades clave |
+This is a **Turborepo monorepo** with TypeScript strict mode and comprehensive tracing via Langfuse.
 
-|-----------------------|-------------------------|
+```
+vmc-chatbot-pro/
+├── apps/
+│   └── web/                    # Next.js 15 + React 19 + Vercel AI SDK
+│       ├── app/
+│       │   ├── api/chat/      # Edge API with SSE streaming
+│       │   ├── page.tsx       # Main chat interface
+│       │   └── layout.tsx     # Root layout
+│       └── package.json
+├── packages/
+│   ├── core/                   # Orchestrator with intent routing
+│   │   └── src/
+│   │       ├── orchestrator.ts # Intent→RAG|Tool|LLM routing
+│   │       └── index.ts
+│   ├── tools/                  # Tool implementations
+│   │   └── src/
+│   │       ├── quote_bmc.ts   # BMC quote generation
+│   │       └── index.ts
+│   ├── rag/                    # Graph-based retrieval
+│   │   └── src/
+│   │       ├── graph.ts       # Vector DB + graph retrieval
+│   │       └── index.ts
+│   └── guardrails/            # Security & safety
+│       └── src/
+│           └── index.ts       # PII/injection/toxicity detection
+├── .github/workflows/
+│   └── ci.yml                 # CI/CD: lint→test→promptfoo→build→deploy
+├── promptfoo.yaml             # AI evaluation (≥90% threshold)
+├── vercel.json                # Vercel deployment config
+├── docker-compose.yml         # Local dev + Vector DB
+├── Dockerfile                 # Production container
+├── .env.example               # Environment variables template
+└── turbo.json                 # Turborepo pipeline config
+```
 
-| **Researcher**        | Estudiar repos de referencia open-source de chatbots (ej. Rasa, Botpress, LangChain) para extraer patrones de arquitectura, modularidad, productividad. |
+## 🚀 Quick Start
 
-| **Auditor-Repos**     | Listar todos los repos de la organización `matiasportugau-ui` vía API GitHub, analizar lenguaje, tests, modularidad, última actividad, licencias y generar matriz de candidatos. |
+### Prerequisites
 
-| **Architect**         | A partir de los hallazgos anteriores, diseñar la arquitectura del nuevo monorepo o rama, definir estructura de carpetas, capas, contratos y stack tecnológico. |
+- Node.js 18+ and npm 9+
+- OpenAI API key
+- Langfuse account (for tracing)
 
-| **Integrator**        | Crear el repo o rama `vmc-chatbot-pro` o `integracion-vmc`, construir estructura inicial, importar módulos seleccionados, instalar dependencias clave, implementar orquestador/flujo. |
+### Installation
 
-| **Quality-Gate**      | Configurar suite de evaluación automática (con Promptfoo), definir KPIs/SLOs, montar pipeline de CI/CD con gates de calidad. |
+```bash
+# Clone the repository
+git clone https://github.com/matiasportugau-ui/bmc-chatbot-pro.git
+cd bmc-chatbot-pro
 
-| **DevOps-Deployer**   | Configurar despliegue (Vercel Edge / Docker Compose), observabilidad con Langfuse + OpenTelemetry, alertas, runbook, rollback y gobernanza de prompts. |
+# Install dependencies
+npm install
 
-## Objetivos específicos  
+# Copy environment variables
+cp .env.example .env
+# Edit .env with your API keys
 
-- Investigar al menos **5 proyectos open-source** de chatbots de calidad para documentar buenas prácticas.  
+# Build all packages
+npm run build
 
-- Auditar todos los repos de `matiasportugau-ui`, seleccionar al menos 3 módulos reutilizables.  
+# Start development server
+npm run dev
+```
 
-- Construir un MVP funcional dentro de `vmc-chatbot-pro` con arquitectura definida.  
+Visit [http://localhost:3000](http://localhost:3000) to see the chatbot interface.
 
-- Configurar guardrails, observabilidad, CI/CD, deploy al menos a entorno de staging.  
+## 📦 Packages
 
-- Ejecutar **5 iteraciones** de mejora continua hasta alcanzar readiness para producción.
+### 🧠 @vmc-chatbot-pro/core
 
-## Bucle de iteraciones  
+Intelligent orchestration with intent classification and routing.
 
-| Iteración | Enfoque                          | Salidas esperadas |
+**Features:**
 
-|-----------|----------------------------------|-------------------|
+- Intent classification (RAG, TOOL, LLM, UNKNOWN)
+- Request orchestration with Zod validation
+- Langfuse tracing integration
+- TypeScript strict mode
 
-| 1         | Investigación comunitaria + mapeo interno | `docs/research_v1.md`, `docs/matriz_repos.csv`, `docs/arquitectura_v1.png` |
+**Usage:**
 
-| 2         | Integración MVP (importación de módulos)  | Monorepo + estructura inicial, `packages/core/orchestrator.ts`, `packages/tools/...` |
+```typescript
+import { orchestrate, type OrchestratorRequest } from '@vmc-chatbot-pro/core';
 
-| 3         | Calidad + Evaluaciones CI/CD             | `promptfoo.yaml`, `.github/workflows/ci.yml`, primer reporte de evals |
+const request: OrchestratorRequest = {
+  messages: [{ role: 'user', content: 'Get a quote for BMC-500' }],
+  userId: 'user-123',
+  sessionId: 'session-456'
+};
 
-| 4         | Hardening, rendimiento y escalabilidad   | `packages/rag/graph.ts`, reports de seguridad, docs de UX |
+const response = await orchestrate(request);
+console.log(response.intent); // 'TOOL'
+```
 
-| 5         | Producción + Operación                   | `vercel.json`/`docker-compose.yml`, `docs/post_deploy_checklist.md`, informe final de readiness |
+### 🔧 @vmc-chatbot-pro/tools
 
-## Arquitectura objetivo  
+Tool implementations for external integrations.
 
-- **Frontend**: Next.js 15 + React 19 + Vercel AI SDK (SSE streaming)  
+**Features:**
 
-- **Backend**: Node 20 + TypeScript + Drizzle ORM + PostgreSQL (Neon) + Redis opcional  
+- BMC quote generation with Zod validation
+- Extensible tool registration system
+- Mock implementations for development
 
-- **AI Gateway**: OpenAI / LiteLLM (failover) con trazabilidad Langfuse  
+**Usage:**
 
-- **RAG**: Embeddings + vector store + retrieving graph + validador de provenance  
+```typescript
+import { getQuoteBMC, type BMCQuoteRequest } from '@vmc-chatbot-pro/tools';
 
-- **Orquestador**: Router de intención → (RAG | Tool | LLM) con contratos Zod, timeouts y retries  
+const quote = await getQuoteBMC({
+  productId: 'BMC-500',
+  quantity: 10,
+  customerType: 'enterprise'
+});
+```
 
-- **Guardrails**: hai-guardrails / Guardrails AI (PII, inyección, toxicity)  
+### 📚 @vmc-chatbot-pro/rag
 
-- **Observabilidad**: OpenTelemetry + Langfuse dashboards &amp; coste por llamada  
+Graph-based retrieval system for knowledge base queries.
 
-- **CI/CD**: GitHub Actions (lint, test, evals, build, deploy)  
+**Features:**
 
-- **Deployment**: Vercel Edge y/o Docker Compose para stack completo
+- Vector database integration (Qdrant)
+- Graph-based re-ranking
+- Document chunking and metadata
+- Configurable top-K retrieval
 
-## KPIs / SLOs  
+**Usage:**
 
-- Tasa de aprobación funcional (Promptfoo): ≥ 90%  
+```typescript
+import { graphRetrieval } from '@vmc-chatbot-pro/rag';
 
-- Latencia p95: ≤ 2.5 s (respuesta inicial SSE) / ≤ 6 s (respuesta completa)  
+const results = await graphRetrieval.retrieve({
+  query: 'BMC API documentation',
+  topK: 5,
+  includeMetadata: true
+});
+```
 
-- Tasa de alucinaciones RAG: ≤ 5%  
+### 🛡️ @vmc-chatbot-pro/guardrails
 
-- Coste por turno: dentro del presupuesto definido  
+Security and safety layer for content filtering.
 
-- Error en pipeline CI: &lt; 5%  
+**Features:**
 
-- Módulos integrados: ≥ 3  
+- **PII Detection:** Email, phone, SSN, credit cards
+- **Injection Prevention:** SQL injection, prompt injection
+- **Toxicity Filtering:** Harmful content detection
+- Configurable thresholds
+- Text sanitization
 
-- Soporte multi-canal habilitado: ✔
+**Usage:**
 
-## Pasos de ejecución inmediata  
+```typescript
+import { checkGuardrails } from '@vmc-chatbot-pro/guardrails';
 
-1. Crear repo (o rama) `vmc-chatbot-pro` o `integracion-vmc`.  
+const result = checkGuardrails('My email is test@example.com');
+if (!result.passed) {
+  console.log('Violations:', result.violations);
+  console.log('Sanitized:', result.sanitizedText);
+}
+```
 
-2. Pegar este README como punto de partida.  
+## 🌐 Web Application
 
-3. Iniciar la **iteración 1** usando los roles Researcher + Auditor-Repos.  
+Next.js 15 app with React 19 and Vercel AI SDK.
 
-   - Generar `docs/research_v1.md` con al menos 5 proyectos comunitarios.  
+**Features:**
 
-   - Generar `docs/matriz_repos.csv` con el análisis de tus repos.  
+- Edge runtime for low latency
+- Server-Sent Events (SSE) streaming
+- Real-time chat interface
+- Guardrails integration
+- Intent-based routing
 
-4. Revisar salidas, decidir módulos reutilizables, votar por integración.  
+**API Endpoints:**
 
-5. Avanzar a **iteración 2**, y así sucesivamente.
+- `POST /api/chat` - Main chat endpoint with streaming
 
-## Gobernanza y seguridad  
+## 🔬 Testing & Quality
 
-- Control de dependencias: auditarlas automáticamente.  
+### Linting
 
-- Escaneo de secretos y riesgos de seguridad: habilitar secret scan.  
+```bash
+npm run lint
+```
 
-- Versionado de prompts: utilizar Langfuse MCP para prompts en producción.  
+### Type Checking
 
-- Aprobaciones de merges: mínimo 2 aprobadores para main / production.  
+```bash
+npm run typecheck
+```
 
-- Pipeline de rollback automático si KPIs no se cumplen post-deploy.
+### Tests
 
----
+```bash
+npm run test
+```
 
-&gt; **Nota:** Los agentes en Cursor pueden ser configurados para esta tarea. Asegúrate de tener acceso a la organización GitHub, conectar Langfuse/Promptfoo, y reservar recursos para CI/CD y despliegue. Consulta la documentación de Cursor para referencia de modos/agent tools.  [oai_citation:0‡docs.cursor.com](https://docs.cursor.com/agent/overview?utm_source=chatgpt.com)
+### AI Evaluation (Promptfoo)
+
+```bash
+# Install promptfoo
+npm install -g promptfoo
+
+# Run evaluation (must achieve ≥90% pass rate)
+promptfoo eval
+```
+
+**Evaluation Areas:**
+
+- Intent classification accuracy
+- Guardrails effectiveness
+- Response quality
+- Tool execution correctness
+
+## 🚢 Deployment
+
+### Vercel (Recommended)
+
+1. Install Vercel CLI:
+
+```bash
+npm i -g vercel
+```
+
+2. Deploy:
+
+```bash
+cd apps/web
+vercel
+```
+
+3. Configure environment variables in Vercel dashboard
+
+### Docker
+
+```bash
+# Build and run with docker-compose
+docker-compose up -d
+
+# Or build manually
+docker build -t vmc-chatbot-pro .
+docker run -p 3000:3000 --env-file .env vmc-chatbot-pro
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+
+See `.env.example` for all available configuration options.
+
+**Required:**
+
+- `OPENAI_API_KEY` - OpenAI API key
+- `LANGFUSE_PUBLIC_KEY` - Langfuse public key
+- `LANGFUSE_SECRET_KEY` - Langfuse secret key
+
+**Optional:**
+
+- `BMC_API_KEY` - BMC API key for quote tool
+- `VECTOR_DB_URL` - Vector database URL (default: http://localhost:6333)
+- `ENABLE_PII_DETECTION` - Enable PII detection (default: true)
+- `ENABLE_INJECTION_PREVENTION` - Enable injection prevention (default: true)
+- `ENABLE_TOXICITY_FILTERING` - Enable toxicity filtering (default: true)
+
+### Turborepo Configuration
+
+Modify `turbo.json` to customize build pipelines and caching behavior.
+
+## 📊 Monitoring & Tracing
+
+All requests are automatically traced with **Langfuse**:
+
+1. Sign up at [cloud.langfuse.com](https://cloud.langfuse.com)
+2. Create a new project
+3. Add credentials to `.env`
+4. View traces in Langfuse dashboard
+
+**Traced Operations:**
+
+- Intent classification
+- Orchestration decisions
+- Tool executions
+- RAG retrievals
+- LLM generations
+
+## 🔐 Security
+
+### Guardrails
+
+The system includes three layers of protection:
+
+1. **PII Detection**
+   - Regex-based pattern matching
+   - Automatic redaction
+   - Supports: email, phone, SSN, credit cards
+
+2. **Injection Prevention**
+   - SQL injection detection
+   - Prompt injection detection
+   - Obfuscation detection
+
+3. **Toxicity Filtering**
+   - Keyword-based detection
+   - Configurable threshold
+   - Severity levels: LOW, MEDIUM, HIGH, CRITICAL
+
+### CI/CD Security
+
+- CodeQL scanning (via `codeql_checker`)
+- Dependency audits
+- Promptfoo evaluation (≥90%)
+- Automated security reviews
+
+## 🛠️ Development
+
+### Project Structure
+
+```
+# Workspace commands (run from root)
+npm run dev        # Start all apps in dev mode
+npm run build      # Build all packages
+npm run lint       # Lint all packages
+npm run test       # Test all packages
+npm run clean      # Clean all build artifacts
+
+# Package-specific commands (run from package directory)
+cd packages/core
+npm run build      # Build this package only
+npm run dev        # Watch mode
+npm run test       # Test this package
+```
+
+### Adding a New Package
+
+1. Create package directory: `packages/new-package`
+2. Add `package.json` with workspace reference
+3. Add to `turbo.json` pipeline
+4. Build and test
+
+### Adding a New Tool
+
+1. Create tool in `packages/tools/src/your-tool.ts`
+2. Define Zod schemas for request/response
+3. Implement tool function
+4. Export from `packages/tools/src/index.ts`
+5. Add tests
+
+## 📝 Scripts Reference
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development servers |
+| `npm run build` | Build all packages |
+| `npm run lint` | Lint all code |
+| `npm run typecheck` | Type check all packages |
+| `npm run test` | Run all tests |
+| `npm run clean` | Remove build artifacts |
+| `npm run format` | Format code with Prettier |
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests and linting
+5. Submit a pull request
+
+## 📄 License
+
+MIT License - see LICENSE file for details
+
+## 🙋 Support
+
+- Documentation: [GitHub Wiki](https://github.com/matiasportugau-ui/bmc-chatbot-pro/wiki)
+- Issues: [GitHub Issues](https://github.com/matiasportugau-ui/bmc-chatbot-pro/issues)
+
+## 🎯 Roadmap
+
+- [ ] Additional tool implementations
+- [ ] Advanced RAG with hybrid search
+- [ ] Multi-modal support
+- [ ] Fine-tuned toxicity models
+- [ ] Real-time analytics dashboard
+- [ ] Multi-language support
