@@ -1,0 +1,12 @@
+prompts:
+  - 'Respond to: {{query}}'
+
+providers:
+  - openai:gpt-3.5-turbo
+
+tests:
+  - vars:
+      query: 'Hello'
+    assert:
+      - type: contains
+        value: 'hello'
