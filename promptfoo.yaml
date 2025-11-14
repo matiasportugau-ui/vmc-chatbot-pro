@@ -1,8 +1,12 @@
-prompts:
-  - 'Respond to: {{query}}'
+api:
+  provider: openai
+  model: gpt-3.5-turbo
+  apiKey: $OPENAI_API_KEY
 
-providers:
-  - openai:gpt-3.5-turbo
+prompts:
+  - id: hello_test
+    prompt: |
+      Respond to: {{query}}
 
 tests:
   - vars:

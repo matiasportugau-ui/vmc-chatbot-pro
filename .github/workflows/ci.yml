@@ -14,4 +14,58 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test
-      - run: npx promptfoo eval --config promptfoo.yaml
+      - name: Run promptfoo evaluation
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          # Look for common promptfoo config locations or a prompts dir
+          if [ -f promptfoo.yml ] || [ -f promptfoo.yaml ] || [ -f promptfoo.config.js ] || [ -d prompts ] || [ -d .promptfoo ]; then
+            echo "Found promptfoo config/tests — running evaluation with npx..."
+            TMP_OUT=/tmp/promptfoo.json
+            set +e
+            # Determine config file to use
+            if [ -f promptfoo.yaml ]; then
+              CONFIG_ARG="--config promptfoo.yaml"
+            elif [ -f promptfoo.yml ]; then
+              CONFIG_ARG="--config promptfoo.yml"
+            elif [ -f promptfoo.config.js ]; then
+              CONFIG_ARG="--config promptfoo.config.js"
+            else
+              CONFIG_ARG=""
+            fi
+            npx promptfoo@latest eval $CONFIG_ARG --output json > "$TMP_OUT" 2>&1
+            PF_EXIT=$?
+            set -e
+            
+            # Check if the error is about missing prompts
+            if grep -q "You must provide at least 1 prompt" "$TMP_OUT" 2>/dev/null; then
+              echo "❌ Error: promptfoo found no prompts in the configuration"
+              echo "The config file exists but has no valid prompts defined"
+              echo "Please check your promptfoo.yaml/promptfoo.yml file and ensure it contains at least one prompt"
+              cat "$TMP_OUT"
+              exit 1
+            fi
+            
+            if [ -s "$TMP_OUT" ]; then
+              SCORE=$(jq -r '.results.passRate // 0' "$TMP_OUT" 2>/dev/null || echo 0)
+            else
+              SCORE=0
+            fi
+            echo "promptfoo exit code: $PF_EXIT"
+            echo "Promptfoo score: $SCORE"
+            # Check if score is below 0.90 (90%)
+            if [ -n "$SCORE" ] && [ "$SCORE" != "null" ] && [ "$SCORE" != "0" ]; then
+              # Use awk for floating point comparison (more reliable than bc)
+              if awk "BEGIN {exit !($SCORE < 0.90)}"; then
+                echo "❌ Promptfoo score $SCORE is below 90% threshold"
+                exit 1
+              else
+                echo "✅ Promptfoo score $SCORE meets 90% threshold"
+              fi
+            else
+              echo "⚠️ Could not parse promptfoo score, treating as failure"
+              exit 1
+            fi
+          else
+            echo "No promptfoo config or tests found — skipping promptfoo evaluation"
+          fi
